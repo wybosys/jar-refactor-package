@@ -1,0 +1,9 @@
+package com.wybosys.jar_refactor_package
+
+
+import java.nio.file.Path
+import kotlin.io.path.Path
+
+fun Home(): Path {
+    return Path(System.getProperty("user.home") as String)
+}
