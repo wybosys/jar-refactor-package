@@ -96,4 +96,15 @@ object GradleCache {
         DB.put(impl.toByteArray(), fnd.pathString.toByteArray())
     }
 
+    /**
+     * 使用 implementation 格式查找包的路径
+     */
+    fun findByImplementation(impl: String): String? {
+        try {
+            return DB[impl.toByteArray()].decodeToString()
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
 }

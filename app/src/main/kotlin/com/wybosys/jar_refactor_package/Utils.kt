@@ -5,5 +5,9 @@ import java.nio.file.Path
 import kotlin.io.path.Path
 
 fun Home(): Path {
-    return Path(System.getProperty("user.home") as String)
+    return Path(System.getProperty("user.home"))
+}
+
+fun Pwd(): Path {
+    return Path(System.getProperty("user.dir"))
 }
