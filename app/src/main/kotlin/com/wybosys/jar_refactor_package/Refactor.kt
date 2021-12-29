@@ -109,7 +109,6 @@ open class Refactor {
                 }
             }
         }
-
         clsSrc.classFile.apply {
             name = applyPackages(name).second
 
