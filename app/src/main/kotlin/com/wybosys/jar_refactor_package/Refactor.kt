@@ -67,7 +67,7 @@ open class Refactor {
 
     fun processAndroidManifest(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         var content = ReadString(jar, entry)
-        content = applyPackages(content)
+        content = applyPackages(content).second
 
         out.putNextEntry(ZipEntry(entry.name))
         out.write(content.encodeToByteArray())
@@ -102,28 +102,37 @@ open class Refactor {
         pool.insertClassPath(ByteArrayClassPath(qname, bytes))
 
         val clsSrc = pool.getCtClass(qname)
+        clsSrc.refClasses.forEach { clz ->
+            applyPackages(clz).apply {
+                if (first) {
+                    clsSrc.replaceClassName(clz, second)
+                }
+            }
+        }
 
         clsSrc.classFile.apply {
-            name = applyPackages(name)
+            name = applyPackages(name).second
 
             val tmp = ByteArrayOutputStream()
             write(DataOutputStream(tmp))
             bytes = tmp.toByteArray()
         }
 
-        val fname = applyPackages(qname).replace('.', '/') + ".class"
+        val fname = applyPackages(qname).second.replace('.', '/') + ".class"
         out.putNextEntry(ZipEntry(fname))
         out.write(bytes)
     }
 
-    protected fun applyPackages(content: String): String {
+    protected fun applyPackages(content: String): Pair<Boolean, String> {
+        var changed = false
         var ret = content
         packages.forEach { (old, new) ->
             if (ret.startsWith(old)) {
                 ret = ret.replace(old, new)
+                changed = true
             }
         }
-        return ret
+        return Pair(changed, ret)
     }
 
     protected companion object {
