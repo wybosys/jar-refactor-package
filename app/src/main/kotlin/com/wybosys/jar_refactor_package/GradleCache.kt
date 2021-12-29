@@ -4,6 +4,7 @@ import org.rocksdb.Options
 import org.rocksdb.RocksDB
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.Path
 import kotlin.io.path.isDirectory
 import kotlin.io.path.name
 import kotlin.io.path.pathString
@@ -99,9 +100,10 @@ object GradleCache {
     /**
      * 使用 implementation 格式查找包的路径
      */
-    fun findByImplementation(impl: String): String? {
+    fun findByImplementation(impl: String): Path? {
         try {
-            return DB[impl.toByteArray()].decodeToString()
+            val fnd = DB[impl.toByteArray()].decodeToString()
+            return Path(fnd)
         } catch (e: Exception) {
             return null
         }
