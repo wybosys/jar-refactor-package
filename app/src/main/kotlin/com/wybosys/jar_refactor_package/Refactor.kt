@@ -103,16 +103,32 @@ open class Refactor {
 
         private val pool = ClassPool()
         private val classes = mutableMapOf<String, CtClass>()
+        private val paths = mutableMapOf<String, ByteArrayClassPath>()
 
         fun add(jar: JarFile, entry: JarEntry) {
             val bytes = ReadBytes(jar, entry)
             val qname = entry.name.replace(".class", "").replace("/", ".")
-            pool.insertClassPath(ByteArrayClassPath(qname, bytes))
+            val cp = ByteArrayClassPath(qname, bytes)
+            pool.appendClassPath(cp)
             classes[qname] = pool.getCtClass(qname)
+            paths[qname] = cp
         }
 
-        fun forEach(action: (Map.Entry<String, CtClass>) -> Unit) = classes.forEach(action)
+        fun forEach(action: (Map.Entry<String, CtClass>) -> Unit) {
+            classes.toMap().forEach(action)
+        }
 
+        fun rename(oldQname: String, newQname: String, newBytes: ByteArray) {
+            val oldCp = paths.remove(oldQname)!!
+            pool.removeClassPath(oldCp)
+            val cp = ByteArrayClassPath(newQname, newBytes)
+            pool.appendClassPath(cp)
+            paths[newQname] = cp
+
+            val oldClz = classes.remove(oldQname)!!
+            oldClz.detach()
+            classes[newQname] = pool.getCtClass(newQname)
+        }
     }
 
     fun processClasses(classes: JarClasses, out: JarOutputStream) {
@@ -124,10 +140,24 @@ open class Refactor {
                     }
                 }
             }
+
+            applyPackages(qname).apply {
+                if (first) {
+                    val bytes: ByteArray
+                    clz.classFile.apply {
+                        val tmp = ByteArrayOutputStream()
+                        write(DataOutputStream(tmp))
+                        bytes = tmp.toByteArray()
+                    }
+
+                    classes.rename(qname, second, bytes)
+                }
+            }
+        }
+
+        classes.forEach { (qname, clz) ->
             val bytes: ByteArray
             clz.classFile.apply {
-                name = applyPackages(name).second
-
                 val tmp = ByteArrayOutputStream()
                 write(DataOutputStream(tmp))
                 bytes = tmp.toByteArray()
