@@ -2,6 +2,7 @@ package com.wybosys.jar_refactor_package
 
 import javassist.ByteArrayClassPath
 import javassist.ClassPool
+import javassist.CtClass
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.FileOutputStream
@@ -41,6 +42,8 @@ open class Refactor {
 
     fun processJar(jarSrc: JarFile, out: JarOutputStream) {
         val iterSrc = jarSrc.entries()
+        val classes = JarClasses()
+
         while (iterSrc.hasMoreElements()) {
             val entrySrc = iterSrc.nextElement()
             if (entrySrc.isDirectory) {
@@ -56,13 +59,15 @@ open class Refactor {
                     if (entrySrc.name.endsWith(".jar")) {
                         processInnerJar(jarSrc, entrySrc, out)
                     } else if (entrySrc.name.endsWith(".class")) {
-                        processClass(jarSrc, entrySrc, out)
+                        classes.add(jarSrc, entrySrc)
                     } else {
                         processNormal(jarSrc, entrySrc, out)
                     }
                 }
             }
         }
+
+        processClasses(classes, out)
     }
 
     fun processAndroidManifest(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
@@ -94,32 +99,44 @@ open class Refactor {
         innerTo.deleteIfExists()
     }
 
-    fun processClass(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
-        var bytes = ReadBytes(jar, entry)
-        val qname = entry.name.replace(".class", "").replace("/", ".")
+    class JarClasses {
 
-        val pool = ClassPool.getDefault()
-        pool.insertClassPath(ByteArrayClassPath(qname, bytes))
+        private val pool = ClassPool()
+        private val classes = mutableMapOf<String, CtClass>()
 
-        val clsSrc = pool.getCtClass(qname)
-        clsSrc.refClasses.forEach { clz ->
-            applyPackages(clz).apply {
-                if (first) {
-                    clsSrc.replaceClassName(clz, second)
+        fun add(jar: JarFile, entry: JarEntry) {
+            val bytes = ReadBytes(jar, entry)
+            val qname = entry.name.replace(".class", "").replace("/", ".")
+            pool.insertClassPath(ByteArrayClassPath(qname, bytes))
+            classes[qname] = pool.getCtClass(qname)
+        }
+
+        fun forEach(action: (Map.Entry<String, CtClass>) -> Unit) = classes.forEach(action)
+
+    }
+
+    fun processClasses(classes: JarClasses, out: JarOutputStream) {
+        classes.forEach { (qname, clz) ->
+            clz.refClasses.forEach { refClz ->
+                applyPackages(refClz).apply {
+                    if (first) {
+                        clz.replaceClassName(refClz, second)
+                    }
                 }
             }
-        }
-        clsSrc.classFile.apply {
-            name = applyPackages(name).second
+            val bytes: ByteArray
+            clz.classFile.apply {
+                name = applyPackages(name).second
 
-            val tmp = ByteArrayOutputStream()
-            write(DataOutputStream(tmp))
-            bytes = tmp.toByteArray()
-        }
+                val tmp = ByteArrayOutputStream()
+                write(DataOutputStream(tmp))
+                bytes = tmp.toByteArray()
+            }
 
-        val fname = applyPackages(qname).second.replace('.', '/') + ".class"
-        out.putNextEntry(ZipEntry(fname))
-        out.write(bytes)
+            val fname = applyPackages(qname).second.replace('.', '/') + ".class"
+            out.putNextEntry(ZipEntry(fname))
+            out.write(bytes)
+        }
     }
 
     protected fun applyPackages(content: String): Pair<Boolean, String> {
