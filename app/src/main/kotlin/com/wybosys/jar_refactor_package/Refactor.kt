@@ -7,7 +7,6 @@ import javassist.expr.ExprEditor
 import javassist.expr.FieldAccess
 import javassist.expr.MethodCall
 import java.io.ByteArrayOutputStream
-import java.io.DataOutputStream
 import java.io.FileOutputStream
 import java.nio.file.Path
 import java.util.jar.JarEntry
@@ -107,7 +106,7 @@ open class Refactor {
         private val pool = ClassPool()
         private val classes = mutableMapOf<String, CtClass>()
         private val processeds = mutableMapOf<String, Boolean>()
-        private val paths = mutableMapOf<String, ByteArrayClassPath>()
+        private val classpaths = mutableMapOf<String, ByteArrayClassPath>()
 
         init {
             pool.appendSystemPath()
@@ -123,29 +122,29 @@ open class Refactor {
             return classes[qname]
         }
 
-        fun forEach(action: (Map.Entry<String, CtClass>) -> Unit) {
-            classes.toMap().forEach(action)
-        }
-
-        fun rename(oldQname: String, newQname: String, newBytes: ByteArray) {
-            val oldCp = paths.remove(oldQname)!!
-            pool.removeClassPath(oldCp)
-
-            val cp = ByteArrayClassPath(newQname, newBytes)
-            pool.appendClassPath(cp)
-            paths[newQname] = cp
-
-            classes.remove(oldQname)!!.apply {
-                detach()
-            }
-            classes[newQname] = pool.getCtClass(newQname)
+        fun all(): Map<String, CtClass> {
+            return classes.toMap()
         }
 
         fun add(qname: String, bytes: ByteArray) {
             val cp = ByteArrayClassPath(qname, bytes)
             pool.appendClassPath(cp)
-            classes[qname] = pool.getCtClass(qname)
-            paths[qname] = cp
+            classes[qname] = pool.get(qname)
+            classpaths[qname] = cp
+        }
+
+        fun duplicateAs(srcQname: String, tgtQname: String) {
+            val src = pool.getAndRename(srcQname, tgtQname)
+            val cp = ByteArrayClassPath(tgtQname, src.toByteArray())
+            pool.appendClassPath(cp)
+
+            classes[tgtQname] = pool.get(tgtQname)
+            classpaths[tgtQname] = cp
+        }
+
+        fun remove(qname: String) {
+            classes.remove(qname)
+            pool.removeClassPath(classpaths.remove(qname))
         }
 
         fun markProcessed(qname: String) {
@@ -165,10 +164,6 @@ open class Refactor {
 
         classes.markProcessed(qname)
 
-        if (qname.endsWith("ConstraintWidgetContainer")) {
-            println()
-        }
-
         // 替换方法中包含的
         clazz.methods.forEach { mth ->
             val sig = mth.genericSignature
@@ -182,6 +177,7 @@ open class Refactor {
         }
 
         // 替换属性
+        /*
         clazz.fields.forEach { fld ->
             val sig = fld.genericSignature
             if (sig != null) {
@@ -202,21 +198,13 @@ open class Refactor {
                 }
             }
         }
+         */
 
         // 处理依赖
         clazz.refClasses.forEach { depQname ->
-            classes.find(depQname).also { depClz ->
-                if (depClz == null) {
-                    return@forEach
-                }
-
-                processClass(depQname, depClz, classes, out)
-
-                // 改依赖的名称
-                applyPackages(depQname).apply {
-                    if (first) {
-                        clazz.replaceClassName(depQname, second)
-                    }
+            applyPackages(depQname).apply {
+                if (first) {
+                    clazz.replaceClassName(depQname, second)
                 }
             }
         }
@@ -225,49 +213,56 @@ open class Refactor {
         clazz.instrument(object : ExprEditor() {
             override fun edit(m: MethodCall) {
                 super.edit(m)
-                try {
-                    println("clazz edit methodcall ${m.signature}")
-                    if (m.methodName == "iterator") {
-                        println()
-                    }
-                } catch (e: Exception) {
-                    println("${clazz} ${m} ${classes}")
-                }
+                //println("clazz edit methodcall ${m.method}  ${m.signature}")
             }
 
             override fun edit(f: FieldAccess) {
                 super.edit(f)
-                println("clazz edit fieldaccess ${f.fieldName} ${f.signature}}")
+                //println("clazz edit fieldaccess ${f.fieldName} ${f.signature}}")
             }
         })
-
-        // 将改过的类添加到池中
-        applyPackages(qname).apply {
-            if (first) {
-                val bytes: ByteArray
-                clazz.classFile.apply {
-                    val tmp = ByteArrayOutputStream()
-                    write(DataOutputStream(tmp))
-                    bytes = tmp.toByteArray()
-                }
-
-                classes.add(second, bytes)
-            }
-        }
     }
 
     fun processClasses(classes: JarClasses, out: JarOutputStream) {
-        classes.forEach { (qname, clz) ->
-            processClass(qname, clz, classes, out)
+        val origin = classes.all()
 
-            // 输出修改后的
-            val bytes: ByteArray
-            clz.classFile.apply {
-                val tmp = ByteArrayOutputStream()
-                write(DataOutputStream(tmp))
-                bytes = tmp.toByteArray()
+        origin.forEach { (qname, clz) ->
+            applyPackages(qname).apply {
+                if (first) {
+                    classes.duplicateAs(qname, second)
+                }
+            }
+        }
+
+        origin.forEach { (qname, clz) ->
+            if (classes.isProcessed(qname)) {
+                return@forEach
+            }
+            classes.markProcessed(qname)
+
+            // 替换方法中包含的
+            clz.methods.forEach { mth ->
+                val sig = mth.genericSignature
+                if (sig != null) {
+                    applyPackagesToSignature(sig).apply {
+                        if (first) {
+                            mth.genericSignature = second
+                        }
+                    }
+                }
             }
 
+            // 处理依赖
+            clz.refClasses.forEach { depQname ->
+                applyPackages(depQname).apply {
+                    if (first) {
+                        clz.replaceClassName(depQname, second)
+                    }
+                }
+            }
+
+            // 输出修改后的
+            val bytes = clz.toByteArray()
             val fname = applyPackages(qname).second.replace('.', '/') + ".class"
             out.putNextEntry(ZipEntry(fname))
             out.write(bytes)
