@@ -13,7 +13,10 @@ class RefactorTest {
         val tgt =
             Path("/Users/wangyb03/develop/lianxin/zhangxin/android/social_main/rpkg/rpkg-constraint-layout-solver-1.1.3.jar")
         Refactor().apply {
-            packages = mapOf("android.support" to "rpkg.android.support")
+            packages = mapOf(
+                "android.support." to "rpkg.android.support.",
+                "androidx." to "rpkg.androidx."
+            )
         }.process(location, tgt)
     }
 

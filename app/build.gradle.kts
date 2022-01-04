@@ -21,6 +21,8 @@ dependencies {
     implementation("com.google.guava:guava:30.1.1-jre")
     implementation("info.picocli:picocli:4.6.2")
     implementation("org.ow2.asm:asm:9.2")
+    implementation("org.ow2.asm:asm-commons:9.2")
+    implementation("org.ow2.asm:asm-util:9.2")
     implementation("org.javassist:javassist:3.28.0-GA")
     implementation("com.h2database:h2:2.0.204")
     implementation("org.rocksdb:rocksdbjni:6.27.3")
