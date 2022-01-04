@@ -73,7 +73,7 @@ open class Refactor {
 
     fun processAndroidManifest(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         var content = ReadString(jar, entry)
-        content = applyPackagesToQName(content).second
+        content = applyPackagesToContent(content).second
 
         out.putNextEntry(ZipEntry(entry.name))
         out.write(content.encodeToByteArray())
@@ -166,9 +166,21 @@ open class Refactor {
         }
     }
 
-    protected fun applyPackagesToQName(content: String): Pair<Boolean, String> {
+    protected fun applyPackagesToContent(content: String): Pair<Boolean, String> {
         var changed = false
         var ret = content
+        packages.forEach { (old, new) ->
+            if (ret.contains(old)) {
+                ret = ret.replace(old, new)
+                changed = true
+            }
+        }
+        return Pair(changed, ret)
+    }
+
+    protected fun applyPackagesToQName(qname: String): Pair<Boolean, String> {
+        var changed = false
+        var ret = qname
         packages.forEach { (old, new) ->
             if (ret.startsWith(old)) {
                 ret = ret.replace(old, new)
