@@ -3,6 +3,7 @@ package com.wybosys.jar_refactor_package
 import javassist.ByteArrayClassPath
 import javassist.ClassPool
 import javassist.CtClass
+import javassist.expr.*
 import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
 import java.nio.file.Path
@@ -206,6 +207,35 @@ open class Refactor {
                     }
                 }
             }
+
+            // 替换代码中包含的
+            clz.instrument(object : ExprEditor() {
+                override fun edit(e: NewExpr) {
+                    println("new ${e.signature} ${e.className}")
+                }
+
+                override fun edit(a: NewArray) {
+                    val sig = a.componentType.genericSignature
+                    println("newarray ${a.componentType.genericSignature} ${a.componentType.name}")
+                }
+
+                override fun edit(i: Instanceof) {
+                    if (i.type.name.endsWith("Guideline")) {
+                        i.replace("${'$'}_ = $1 instanceof String;")
+                    }
+                }
+
+                override fun edit(c: Cast) {
+                    if (c.type.name.endsWith("Guideline")) {
+                        //c.replace("${'$'}_ = (${'$'}w)(${'$'}r)$1;")
+                        c.replace("${'$'}_ = (String)$1;")
+                    }
+                }
+
+                override fun edit(f: FieldAccess) {
+                    //println("field ${f.className} ${f.fileName} ${f.fieldName} ${f.signature}")
+                }
+            })
 
             // 处理依赖
             clz.refClasses.forEach { depQname ->
