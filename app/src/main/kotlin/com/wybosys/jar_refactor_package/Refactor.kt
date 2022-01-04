@@ -3,9 +3,6 @@ package com.wybosys.jar_refactor_package
 import javassist.ByteArrayClassPath
 import javassist.ClassPool
 import javassist.CtClass
-import javassist.expr.ExprEditor
-import javassist.expr.FieldAccess
-import javassist.expr.MethodCall
 import java.io.ByteArrayOutputStream
 import java.io.FileOutputStream
 import java.nio.file.Path
@@ -157,72 +154,6 @@ open class Refactor {
 
     }
 
-    fun processClass(qname: String, clazz: CtClass, classes: JarClasses, out: JarOutputStream) {
-        if (classes.isProcessed(qname)) {
-            return
-        }
-
-        classes.markProcessed(qname)
-
-        // 替换方法中包含的
-        clazz.methods.forEach { mth ->
-            val sig = mth.genericSignature
-            if (sig != null) {
-                applyPackagesToSignature(sig).apply {
-                    if (first) {
-                        mth.genericSignature = second
-                    }
-                }
-            }
-        }
-
-        // 替换属性
-        /*
-        clazz.fields.forEach { fld ->
-            val sig = fld.genericSignature
-            if (sig != null) {
-                applyPackagesToSignature(sig).apply {
-                    if (first) {
-                        fld.genericSignature = second
-                    }
-                }
-            } else {
-                applyPackages(fld.type.name).apply {
-                    if (first) {
-                        if (!fld.type.isFrozen) {
-                            fld.type.name = second
-                        } else {
-                            println()
-                        }
-                    }
-                }
-            }
-        }
-         */
-
-        // 处理依赖
-        clazz.refClasses.forEach { depQname ->
-            applyPackages(depQname).apply {
-                if (first) {
-                    clazz.replaceClassName(depQname, second)
-                }
-            }
-        }
-
-        // 处理代码段
-        clazz.instrument(object : ExprEditor() {
-            override fun edit(m: MethodCall) {
-                super.edit(m)
-                //println("clazz edit methodcall ${m.method}  ${m.signature}")
-            }
-
-            override fun edit(f: FieldAccess) {
-                super.edit(f)
-                //println("clazz edit fieldaccess ${f.fieldName} ${f.signature}}")
-            }
-        })
-    }
-
     fun processClasses(classes: JarClasses, out: JarOutputStream) {
         val origin = classes.all()
 
@@ -240,13 +171,37 @@ open class Refactor {
             }
             classes.markProcessed(qname)
 
+            if (qname.endsWith("ConstraintWidgetContainer")) {
+                println()
+            }
+
             // 替换方法中包含的
-            clz.methods.forEach { mth ->
+            clz.declaredMethods.forEach { mth ->
                 val sig = mth.genericSignature
                 if (sig != null) {
                     applyPackagesToSignature(sig).apply {
                         if (first) {
                             mth.genericSignature = second
+                        }
+                    }
+                }
+            }
+
+            // 处理成员变量
+            clz.declaredFields.forEach { fld ->
+                val sig = fld.genericSignature
+                if (sig != null) {
+                    applyPackagesToSignature(sig).apply {
+                        if (first) {
+                            fld.genericSignature = second
+                        }
+                    }
+                } else {
+                    applyPackages(fld.type.name).apply {
+                        if (first) {
+                            if (!fld.type.isFrozen) {
+                                fld.type.name = second
+                            }
                         }
                     }
                 }
