@@ -17,8 +17,9 @@ class RefactorTest {
     @Test
     fun refactor() {
         // val from = "com.android.support.constraint:constraint-layout-solver:1.1.3"
-        val from = "com.android.support:appcompat-v7:26.1.0"
+        // val from = "com.android.support:appcompat-v7:26.1.0"
         // val from = "com.zenmen.video:sdk:5.22.1.3"
+        val from = "com.makeramen:roundedimageview:2.3.0"
         val location = GradleCache.findByImplementation(from)!!
         val tgt = OUTPUT.resolve("rpkg-${location.fileName}")
         Refactor().apply {
@@ -56,7 +57,8 @@ class RefactorTest {
             "me.everything:overscroll-decor-android:1.0.4",
             "com.zenmen.video:sdk:5.22.1.3",
             "com.zenmen.video:goodgallery:1.3.7.5-SNAPSHOT",
-            "com.zenmen.video:goodplayer:4.3.0.0-SNAPSHOT"
+            "com.zenmen.video:goodplayer:4.3.0.0-SNAPSHOT",
+            "com.makeramen:roundedimageview:2.3.0"
         ).forEach { from ->
             val location = GradleCache.findByImplementation(from)
                 ?: throw Exception("没有找到 $from")

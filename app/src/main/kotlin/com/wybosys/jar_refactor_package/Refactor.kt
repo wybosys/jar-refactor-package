@@ -84,6 +84,10 @@ open class Refactor {
                                     processAndroidLayout(jarSrc, entrySrc, out)
                                     continue
                                 }
+                                if (path.startsWith("res/values")) {
+                                    processAndroidValues(jarSrc, entrySrc, out)
+                                    continue
+                                }
                             }
                         }
                         if (path.startsWith("META-INF") and path.endsWith(".version")) {
@@ -146,6 +150,26 @@ open class Refactor {
             applyPackagesToQName(node.nodeName).apply {
                 if (first) {
                     doc.renameNode(node, node.baseURI, second)
+                }
+            }
+        }
+
+        val bytes = doc.toByteArray()
+        out.putNextEntry(ZipEntry(entry.name))
+        out.write(bytes)
+    }
+
+    fun processAndroidValues(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+        val doc = ParseXml(jar.getInputStream(entry))
+
+        doc.childNodes.walk { node ->
+            if (node.nodeName == "attr") {
+                if (android!!.compileSdkVersion == 28) {
+                    if (listOf("riv_tile_mode", "riv_tile_mode_x", "riv_tile_mode_y").find {
+                            node.findAttribute("name", it) != null
+                        } != null) {
+                        node.parentNode.removeChild(node)
+                    }
                 }
             }
         }

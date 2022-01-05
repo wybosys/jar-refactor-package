@@ -1,7 +1,6 @@
 package com.wybosys.jar_refactor_package
 
 import org.w3c.dom.Document
-import org.w3c.dom.NamedNodeMap
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
 import java.io.ByteArrayOutputStream
@@ -12,11 +11,17 @@ import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 
-fun NodeList.walk(proc: (node: Node) -> Unit) {
+fun NodeList.toList(): List<Node> {
+    val ret = mutableListOf<Node>()
     for (i in 0 until length) {
-        val node = item(i)
-        proc(node)
+        ret.add(item(i))
+    }
+    return ret
+}
 
+fun NodeList.walk(proc: (node: Node) -> Unit) {
+    toList().forEach { node ->
+        proc(node)
         node.childNodes.walk(proc)
     }
 }
@@ -30,13 +35,6 @@ fun NodeList.findNamed(name: String): List<Node> {
         }
     }
     return ret.toList()
-}
-
-fun NamedNodeMap.forEach(proc: (node: Node) -> Unit) {
-    for (i in 0 until length) {
-        val node = item(i)
-        proc(node)
-    }
 }
 
 fun Node.findAttribute(name: String): Node? {
@@ -58,6 +56,19 @@ fun Node.removeAttribute(name: String): Node? {
     }
 
     return fnd
+}
+
+fun Node.findAttribute(key: String, value: String): Node? {
+    if (!hasAttributes()) {
+        return null
+    }
+
+    val fnd = attributes.getNamedItem(key)
+    return if (fnd?.nodeValue == value) {
+        fnd
+    } else {
+        null
+    }
 }
 
 fun ParseXml(stm: InputStream): Document {
