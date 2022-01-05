@@ -54,7 +54,9 @@ class RefactorTest {
             "androidx.annotation:annotation:1.0.0",
             "androidx.cardview:cardview:1.0.0",
             "me.everything:overscroll-decor-android:1.0.4",
-            "com.zenmen.video:sdk:5.22.1.3"
+            "com.zenmen.video:sdk:5.22.1.3",
+            "com.zenmen.video:goodgallery:1.3.7.5-SNAPSHOT",
+            "com.zenmen.video:goodplayer:4.3.0.0-SNAPSHOT"
         ).forEach { from ->
             val location = GradleCache.findByImplementation(from)
                 ?: throw Exception("没有找到 $from")
