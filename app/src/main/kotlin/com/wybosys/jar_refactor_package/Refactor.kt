@@ -34,6 +34,8 @@ open class Refactor {
     var android: AndroidProfile? = null
 
     open fun process(from: Path, to: Path) {
+        println("开始处理 $from")
+
         val jarSrc = JarFile(from.toFile())
 
         val tmp = to.parent.resolve("tmp." + to.name)
@@ -50,6 +52,8 @@ open class Refactor {
             }
             tmp.toFile().renameTo(it)
         }
+
+        println("保存至 $to")
     }
 
     fun processJar(jarSrc: JarFile, out: JarOutputStream) {
