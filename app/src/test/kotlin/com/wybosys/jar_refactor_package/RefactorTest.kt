@@ -19,7 +19,8 @@ class RefactorTest {
         // val from = "com.android.support.constraint:constraint-layout-solver:1.1.3"
         // val from = "com.android.support:appcompat-v7:26.1.0"
         // val from = "com.zenmen.video:sdk:5.22.1.3"
-        val from = "com.makeramen:roundedimageview:2.3.0"
+        // val from = "com.makeramen:roundedimageview:2.3.0"
+        val from = "com.zenmen.voicechat.sdk:lib-core:1.0.1.0-SNAPSHOT"
         val location = GradleCache.findByImplementation(from)!!
         val tgt = OUTPUT.resolve("rpkg-${location.fileName}")
         Refactor().apply {
@@ -42,9 +43,9 @@ class RefactorTest {
             "com.android.support:support-compat:26.1.0",
             "com.android.support:support-core-ui:26.1.0",
             "com.android.support:support-core-utils:26.1.0",
+            "com.android.support:support-media-compat:26.1.0",
             "com.android.support:support-dynamic-animation:26.1.0",
             "com.android.support:support-fragment:26.1.0",
-            "com.android.support:support-media-compat:26.1.0",
             "com.android.support:support-v4:26.1.0",
             "com.android.support:support-v13:26.1.0",
             "com.android.support:multidex:1.0.0",
@@ -56,6 +57,9 @@ class RefactorTest {
             "androidx.cardview:cardview:1.0.0",
             "me.everything:overscroll-decor-android:1.0.4",
             "com.zenmen.video:sdk:5.22.1.3",
+            "com.zenmen.voicechat.sdk:lib-motion-sdk:1.0.1.0-SNAPSHOT",
+            "com.zenmen.voicechat.sdk:lib-core:1.0.1.0-SNAPSHOT",
+            "com.zenmen.voicechat.sdk:lib-common-motion:1.0.1.0-SNAPSHOT",
             "com.zenmen.video:goodgallery:1.3.7.5-SNAPSHOT",
             "com.zenmen.video:goodplayer:4.3.0.0-SNAPSHOT",
             "com.makeramen:roundedimageview:2.3.0"

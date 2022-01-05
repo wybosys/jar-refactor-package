@@ -168,7 +168,7 @@ open class Refactor {
                     if (listOf("riv_tile_mode", "riv_tile_mode_x", "riv_tile_mode_y").find {
                             node.findAttribute("name", it) != null
                         } != null) {
-                        node.parentNode.removeChild(node)
+                        node.clearChildNodes()
                     }
                 }
             }

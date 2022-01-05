@@ -45,6 +45,12 @@ fun Node.findAttribute(name: String): Node? {
     return attributes.getNamedItem(name)
 }
 
+fun Node.clearChildNodes() {
+    childNodes.toList().forEach {
+        removeChild(it)
+    }
+}
+
 fun Node.removeAttribute(name: String): Node? {
     if (!hasAttributes()) {
         return null
@@ -69,6 +75,13 @@ fun Node.findAttribute(key: String, value: String): Node? {
     } else {
         null
     }
+}
+
+fun Node.setAttribute(key: String, value: String): Node {
+    val node = ownerDocument.createAttribute(key)
+    node.nodeValue = value
+    attributes.setNamedItem(node)
+    return node
 }
 
 fun ParseXml(stm: InputStream): Document {
