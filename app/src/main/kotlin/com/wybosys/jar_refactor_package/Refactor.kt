@@ -17,8 +17,10 @@ import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
+import kotlin.io.path.Path
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.name
+import kotlin.io.path.pathString
 
 class AndroidProfile {
     var compileSdkVersion: Int = 0
@@ -35,7 +37,6 @@ open class Refactor {
      * android特殊重构配置
      */
     var android: AndroidProfile? = null
-
 
     open fun process(from: Path, to: Path) {
         val jarSrc = JarFile(from.toFile())
@@ -86,6 +87,10 @@ open class Refactor {
                                 }
                             }
                         }
+                        if (path.startsWith("META-INF") and path.endsWith(".version")) {
+                            processVersion(jarSrc, entrySrc, out)
+                            continue
+                        }
                         processNormal(jarSrc, entrySrc, out)
                     }
                 }
@@ -105,6 +110,15 @@ open class Refactor {
 
     fun processNormal(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         out.putNextEntry(ZipEntry(entry.name))
+
+        val bytes = ReadBytes(jar, entry)
+        out.write(bytes)
+    }
+
+    fun processVersion(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+        var path = Path(entry.name)
+        path = path.resolveSibling("rpkg_${path.name}")
+        out.putNextEntry(ZipEntry(path.pathString))
 
         val bytes = ReadBytes(jar, entry)
         out.write(bytes)
