@@ -12,8 +12,17 @@ import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
+import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.transform.OutputKeys
+import javax.xml.transform.TransformerFactory
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.name
+
+class AndroidProfile {
+    var compileSdkVersion: Int = 0
+}
 
 open class Refactor {
 
@@ -21,6 +30,12 @@ open class Refactor {
      * 需要重构的包名
      */
     var packages: Map<String, String> = mapOf()
+
+    /**
+     * android特殊重构配置
+     */
+    var android: AndroidProfile? = null
+
 
     open fun process(from: Path, to: Path) {
         val jarSrc = JarFile(from.toFile())
@@ -57,11 +72,20 @@ open class Refactor {
                     processAndroidManifest(jarSrc, entrySrc, out)
                 }
                 else -> {
-                    if (entrySrc.name.endsWith(".jar")) {
+                    val path = entrySrc.name
+                    if (path.endsWith(".jar")) {
                         processInnerJar(jarSrc, entrySrc, out)
-                    } else if (entrySrc.name.endsWith(".class")) {
+                    } else if (path.endsWith(".class")) {
                         classes.add(jarSrc, entrySrc)
                     } else {
+                        if (android != null) {
+                            if (path.startsWith("res")) {
+                                if (path.startsWith("res/layout")) {
+                                    processAndroidLayout(jarSrc, entrySrc, out)
+                                    continue
+                                }
+                            }
+                        }
                         processNormal(jarSrc, entrySrc, out)
                     }
                 }
@@ -84,6 +108,25 @@ open class Refactor {
 
         val bytes = ReadBytes(jar, entry)
         out.write(bytes)
+    }
+
+    fun processAndroidLayout(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+        val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(jar.getInputStream(entry))
+
+        doc.childNodes.walk { node ->
+            if (node.hasAttributes()) {
+                if (android!!.compileSdkVersion == 28) {
+                    node.removeAttribute("app:civ_circle_background_color")
+                }
+            }
+        }
+
+        val bytes = ByteArrayOutputStream()
+        TransformerFactory.newInstance().newTransformer().apply {
+            setOutputProperty(OutputKeys.INDENT, "yes");
+        }.transform(DOMSource(doc), StreamResult(bytes))
+        out.putNextEntry(ZipEntry(entry.name))
+        out.write(bytes.toByteArray())
     }
 
     fun processInnerJar(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
