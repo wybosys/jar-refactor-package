@@ -79,7 +79,7 @@ open class Refactor {
                         classes.add(jarSrc, entrySrc)
                     } else {
                         if (android != null) {
-                            if (path.startsWith("res")) {
+                            if (path.startsWith("res/")) {
                                 if (path.startsWith("res/layout")) {
                                     processAndroidLayout(jarSrc, entrySrc, out)
                                     continue
@@ -140,6 +140,12 @@ open class Refactor {
             if (node.hasAttributes()) {
                 if (android!!.compileSdkVersion == 28) {
                     node.removeAttribute("app:civ_circle_background_color")
+                }
+            }
+
+            applyPackagesToQName(node.nodeName).apply {
+                if (first) {
+                    doc.renameNode(node, node.baseURI, second)
                 }
             }
         }
