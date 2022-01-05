@@ -97,12 +97,13 @@ open class Refactor {
 
     fun processAndroidManifest(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         val doc = ParseXml(jar.getInputStream(entry))
-        val root = doc.firstChild
-        root.findAttribute("package").also {
-            if (it != null) {
-                applyPackagesToQName(it.nodeValue).apply {
-                    if (first) {
-                        it.nodeValue = second
+        doc.childNodes.findNamed("manifest").first().apply {
+            findAttribute("package").also {
+                if (it != null) {
+                    applyPackagesToQName(it.nodeValue).apply {
+                        if (first) {
+                            it.nodeValue = second
+                        }
                     }
                 }
             }

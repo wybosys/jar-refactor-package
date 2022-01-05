@@ -17,7 +17,8 @@ class RefactorTest {
     @Test
     fun refactor() {
         // val from = "com.android.support.constraint:constraint-layout-solver:1.1.3"
-        val from = "com.zenmen.video:sdk:5.22.1.3"
+        val from = "com.android.support:appcompat-v7:26.1.0"
+        // val from = "com.zenmen.video:sdk:5.22.1.3"
         val location = GradleCache.findByImplementation(from)!!
         val tgt = OUTPUT.resolve("rpkg-${location.fileName}")
         Refactor().apply {

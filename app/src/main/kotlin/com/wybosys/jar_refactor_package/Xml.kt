@@ -21,6 +21,17 @@ fun NodeList.walk(proc: (node: Node) -> Unit) {
     }
 }
 
+fun NodeList.findNamed(name: String): List<Node> {
+    val ret = mutableListOf<Node>()
+    for (i in 0 until length) {
+        val node = item(i)
+        if (node.nodeName == name) {
+            ret.add(node)
+        }
+    }
+    return ret.toList()
+}
+
 fun NamedNodeMap.forEach(proc: (node: Node) -> Unit) {
     for (i in 0 until length) {
         val node = item(i)
@@ -58,7 +69,7 @@ fun Document.toByteArray(): ByteArray {
     TransformerFactory.newInstance().apply {
         setAttribute("indent-number", 4)
     }.newTransformer().apply {
-        setOutputProperty(OutputKeys.INDENT, "yes");
+        setOutputProperty(OutputKeys.INDENT, "yes")
     }.transform(DOMSource(this), StreamResult(bytes))
     return bytes.toByteArray()
 }
