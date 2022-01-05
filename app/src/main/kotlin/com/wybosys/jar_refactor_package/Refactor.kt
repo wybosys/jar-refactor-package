@@ -12,11 +12,6 @@ import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import java.util.jar.JarOutputStream
 import java.util.zip.ZipEntry
-import javax.xml.parsers.DocumentBuilderFactory
-import javax.xml.transform.OutputKeys
-import javax.xml.transform.TransformerFactory
-import javax.xml.transform.dom.DOMSource
-import javax.xml.transform.stream.StreamResult
 import kotlin.io.path.Path
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.name
@@ -101,11 +96,20 @@ open class Refactor {
     }
 
     fun processAndroidManifest(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
-        var content = ReadString(jar, entry)
-        content = applyPackagesToContent(content).second
+        val doc = ParseXml(jar.getInputStream(entry))
+        val root = doc.firstChild
+        root.findAttribute("package").also {
+            if (it != null) {
+                applyPackagesToQName(it.nodeValue).apply {
+                    if (first) {
+                        it.nodeValue = second
+                    }
+                }
+            }
+        }
 
         out.putNextEntry(ZipEntry(entry.name))
-        out.write(content.encodeToByteArray())
+        out.write(doc.toByteArray())
     }
 
     fun processNormal(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
@@ -125,7 +129,7 @@ open class Refactor {
     }
 
     fun processAndroidLayout(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
-        val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(jar.getInputStream(entry))
+        val doc = ParseXml(jar.getInputStream(entry))
 
         doc.childNodes.walk { node ->
             if (node.hasAttributes()) {
@@ -135,12 +139,9 @@ open class Refactor {
             }
         }
 
-        val bytes = ByteArrayOutputStream()
-        TransformerFactory.newInstance().newTransformer().apply {
-            setOutputProperty(OutputKeys.INDENT, "yes");
-        }.transform(DOMSource(doc), StreamResult(bytes))
+        val bytes = doc.toByteArray()
         out.putNextEntry(ZipEntry(entry.name))
-        out.write(bytes.toByteArray())
+        out.write(bytes)
     }
 
     fun processInnerJar(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
