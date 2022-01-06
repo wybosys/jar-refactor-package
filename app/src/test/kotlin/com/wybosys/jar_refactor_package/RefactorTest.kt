@@ -8,7 +8,7 @@ val PACKAGES = mapOf(
     "android.support." to "rpkg.android.support.",
     "android.arch.lifecycle." to "rpkg.android.arch.lifecycle.",
     "android.databinding." to "rpkg.android.databinding.",
-    "androidx." to "rpkg.androidx."
+    "androidx." to "rpkg.android.support."
 )
 val PACKAGES_IGNORE = setOf(
     "android.support.annotation",
@@ -22,7 +22,7 @@ class RefactorTest {
 
     @Test
     fun refactor() {
-        val from = "android.arch.lifecycle:livedata:1.1.0"
+        val from = "com.android.support:design:26.1.0"
         val location = GradleCache.findByImplementation(from)!!
         val tgt = OUTPUT.resolve("rpkg-${PackageName(from).replace('.', '_')}-${location.fileName}")
         Refactor().apply {
@@ -76,7 +76,8 @@ class RefactorTest {
             "com.zenmen.video:goodplayer:4.3.0.0-SNAPSHOT",
             "com.makeramen:roundedimageview:2.3.0",
             "com.github.bumptech.glide:glide:3.8.0",
-            "com.scwang.smartrefresh:SmartRefreshLayout:1.1.2"
+            "com.scwang.smartrefresh:SmartRefreshLayout:1.1.2",
+            "com.google.android.material:material:1.4.0"
         ).forEach { from ->
             val location = GradleCache.findByImplementation(from)
                 ?: throw Exception("没有找到 $from")

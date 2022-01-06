@@ -37,6 +37,17 @@ fun NodeList.findNamed(name: String): List<Node> {
     return ret.toList()
 }
 
+fun NodeList.findByAttribute(name: String, key: String, value: String): List<Node> {
+    val ret = mutableListOf<Node>()
+    for (i in 0 until length) {
+        val node = item(i)
+        if (node.nodeName == name && node.findAttribute(key, value) != null) {
+            ret.add(node)
+        }
+    }
+    return ret
+}
+
 fun Node.findAttribute(name: String): Node? {
     if (!hasAttributes()) {
         return null

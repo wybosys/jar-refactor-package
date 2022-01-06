@@ -192,6 +192,20 @@ open class Refactor {
             }
         }
 
+        if (pkg.startsWith("com.android.support:design:")) {
+            val root = doc.childNodes.findNamed("resources")
+            root.firstOrNull()?.childNodes?.apply {
+                listOf(
+                    "appbar_scrolling_view_behavior",
+                    "bottom_sheet_behavior"
+                ).forEach {
+                    findByAttribute("string", "name", it).firstOrNull()?.also { fnd ->
+                        fnd.textContent = "rpkg.${fnd.textContent}"
+                    }
+                }
+            }
+        }
+
         val bytes = doc.toByteArray()
         out.putNextEntry(ZipEntry(entry.name))
         out.write(bytes)
