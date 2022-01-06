@@ -29,11 +29,16 @@ open class Refactor {
     var packages: Map<String, String> = mapOf()
 
     /**
+     * 需要跳过的包名
+     */
+    var ignorePackages: Set<String> = setOf()
+
+    /**
      * android特殊重构配置
      */
     var android: AndroidProfile? = null
 
-    open fun process(from: Path, to: Path) {
+    open fun process(pkg: String, from: Path, to: Path) {
         println("开始处理 $from")
 
         val jarSrc = JarFile(from.toFile())
@@ -43,7 +48,7 @@ open class Refactor {
             it.deleteOnExit()
         }))
 
-        processJar(jarSrc, jarTmpOut)
+        processJar(pkg, jarSrc, jarTmpOut)
         jarTmpOut.close()
 
         to.toFile().also {
@@ -56,7 +61,7 @@ open class Refactor {
         println("保存至 $to")
     }
 
-    fun processJar(jarSrc: JarFile, out: JarOutputStream) {
+    fun processJar(pkg: String, jarSrc: JarFile, out: JarOutputStream) {
         val iterSrc = jarSrc.entries()
         val classes = JarClasses()
 
@@ -69,32 +74,32 @@ open class Refactor {
 
             when (entrySrc.name) {
                 "AndroidManifest.xml" -> {
-                    processAndroidManifest(jarSrc, entrySrc, out)
+                    processAndroidManifest(pkg, jarSrc, entrySrc, out)
                 }
                 else -> {
                     val path = entrySrc.name
                     if (path.endsWith(".jar")) {
-                        processInnerJar(jarSrc, entrySrc, out)
+                        processInnerJar(pkg, jarSrc, entrySrc, out)
                     } else if (path.endsWith(".class")) {
                         classes.add(jarSrc, entrySrc)
                     } else {
                         if (android != null) {
                             if (path.startsWith("res/")) {
                                 if (path.startsWith("res/layout")) {
-                                    processAndroidLayout(jarSrc, entrySrc, out)
+                                    processAndroidLayout(pkg, jarSrc, entrySrc, out)
                                     continue
                                 }
                                 if (path.startsWith("res/values")) {
-                                    processAndroidValues(jarSrc, entrySrc, out)
+                                    processAndroidValues(pkg, jarSrc, entrySrc, out)
                                     continue
                                 }
                             }
                         }
                         if (path.startsWith("META-INF") and path.endsWith(".version")) {
-                            processVersion(jarSrc, entrySrc, out)
+                            processVersion(pkg, jarSrc, entrySrc, out)
                             continue
                         }
-                        processNormal(jarSrc, entrySrc, out)
+                        processNormal(pkg, jarSrc, entrySrc, out)
                     }
                 }
             }
@@ -103,7 +108,7 @@ open class Refactor {
         processClasses(classes, out)
     }
 
-    fun processAndroidManifest(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+    fun processAndroidManifest(pkg: String, jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         val doc = ParseXml(jar.getInputStream(entry))
         doc.childNodes.findNamed("manifest").first().apply {
             findAttribute("package").also {
@@ -115,20 +120,25 @@ open class Refactor {
                     }
                 }
             }
+
+            if (pkg.startsWith("android.arch.lifecycle:extensions")) {
+                val fnd = childNodes.findNamed("application").first()
+                removeChild(fnd)
+            }
         }
 
         out.putNextEntry(ZipEntry(entry.name))
         out.write(doc.toByteArray())
     }
 
-    fun processNormal(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+    fun processNormal(pkg: String, jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         out.putNextEntry(ZipEntry(entry.name))
 
         val bytes = ReadBytes(jar, entry)
         out.write(bytes)
     }
 
-    fun processVersion(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+    fun processVersion(pkg: String, jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         var path = Path(entry.name)
         path = path.resolveSibling("rpkg_${path.name}")
         out.putNextEntry(ZipEntry(path.pathString))
@@ -137,7 +147,7 @@ open class Refactor {
         out.write(bytes)
     }
 
-    fun processAndroidLayout(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+    fun processAndroidLayout(pkg: String, jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         val doc = ParseXml(jar.getInputStream(entry))
 
         doc.childNodes.walk { node ->
@@ -159,16 +169,24 @@ open class Refactor {
         out.write(bytes)
     }
 
-    fun processAndroidValues(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+    fun processAndroidValues(pkg: String, jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         val doc = ParseXml(jar.getInputStream(entry))
 
         doc.childNodes.walk { node ->
             if (node.nodeName == "attr") {
                 if (android!!.compileSdkVersion == 28) {
-                    if (listOf("riv_tile_mode", "riv_tile_mode_x", "riv_tile_mode_y").find {
+                    if (listOf(
+                            "riv_tile_mode",
+                            "riv_tile_mode_x",
+                            "riv_tile_mode_y",
+                            "esv_shape",
+                            "decorations_direction"
+                        ).find {
                             node.findAttribute("name", it) != null
-                        } != null) {
+                        } != null
+                    ) {
                         node.clearChildNodes()
+                        node.removeAttribute("format")
                     }
                 }
             }
@@ -179,12 +197,12 @@ open class Refactor {
         out.write(bytes)
     }
 
-    fun processInnerJar(jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+    fun processInnerJar(pkg: String, jar: JarFile, entry: JarEntry, out: JarOutputStream) {
         val innerFrom = Pwd().resolve("tmp.inner.from")
         innerFrom.toFile().writeBytes(ReadBytes(jar, entry))
 
         val innerTo = Pwd().resolve("tmp.inner.to")
-        process(innerFrom, innerTo)
+        process(pkg, innerFrom, innerTo)
 
         out.putNextEntry(ZipEntry(entry.name))
         out.write(innerTo.toFile().readBytes())
@@ -259,21 +277,16 @@ open class Refactor {
         }
     }
 
-    protected fun applyPackagesToContent(content: String): Pair<Boolean, String> {
-        var changed = false
-        var ret = content
-        packages.forEach { (old, new) ->
-            if (ret.contains(old)) {
-                ret = ret.replace(old, new)
-                changed = true
-            }
-        }
-        return Pair(changed, ret)
-    }
-
     protected fun applyPackagesToQName(qname: String): Pair<Boolean, String> {
         var changed = false
         var ret = qname
+
+        if (ignorePackages.find {
+                ret.startsWith(it)
+            } != null) {
+            return Pair(false, ret)
+        }
+
         packages.forEach { (old, new) ->
             if (ret.startsWith(old)) {
                 ret = ret.replace(old, new)
@@ -283,33 +296,27 @@ open class Refactor {
         return Pair(changed, ret)
     }
 
-    protected fun applyPackagesToSignature(sig: String): Pair<Boolean, String> {
+    protected fun applyPackagesToClass(clz: String): Pair<Boolean, String> {
         var changed = false
-        var ret = sig
-        packages.forEach { (old, new) ->
-            val sigold = "L${old.replace('.', '/')}"
-            val signew = "L${new.replace('.', '/')}"
+        var ret = clz
 
-            if (ret.contains(sigold)) {
-                ret = ret.replace(sigold, signew)
+        if (ignorePackages.find {
+                val clzold = it.replace('.', '/')
+                ret.startsWith(clzold)
+            } != null) {
+            return Pair(false, ret)
+        }
+
+        packages.forEach { (old, new) ->
+            val clzold = old.replace('.', '/')
+            val clznew = new.replace('.', '/')
+
+            if (ret.startsWith(clzold)) {
+                ret = ret.replace(clzold, clznew)
                 changed = true
             }
         }
-        return Pair(changed, ret)
-    }
 
-    protected fun applyPackagesToClass(sig: String): Pair<Boolean, String> {
-        var changed = false
-        var ret = sig
-        packages.forEach { (old, new) ->
-            val sigold = old.replace('.', '/')
-            val signew = new.replace('.', '/')
-
-            if (ret.contains(sigold)) {
-                ret = ret.replace(sigold, signew)
-                changed = true
-            }
-        }
         return Pair(changed, ret)
     }
 

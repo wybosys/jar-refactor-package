@@ -11,3 +11,7 @@ fun Home(): Path {
 fun Pwd(): Path {
     return Path(System.getProperty("user.dir"))
 }
+
+fun PackageName(qname: String): String {
+    return qname.split(":").first()
+}
