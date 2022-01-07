@@ -79,7 +79,8 @@ class RefactorTest {
             "com.makeramen:roundedimageview:2.3.0",
             "com.github.bumptech.glide:glide:3.8.0",
             "com.scwang.smartrefresh:SmartRefreshLayout:1.1.2",
-            "com.google.android.material:material:1.4.0"
+            "com.google.android.material:material:1.4.0",
+            "wblsdk_sdk_p_lx20211129_04.aar"
         ).forEach { from ->
             val location = GradleCache.findByImplementation(from)
                 ?: throw Exception("没有找到 $from")
