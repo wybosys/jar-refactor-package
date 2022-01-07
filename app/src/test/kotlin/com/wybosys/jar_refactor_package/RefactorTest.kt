@@ -4,6 +4,8 @@ import org.junit.Test
 import kotlin.io.path.Path
 
 val OUTPUT = Path("/Users/wangyb03/develop/lianxin/zhangxin/android/social_main/rpkg/")
+val APPLIBS = Path("/Users/wangyb03/develop/lianxin/zhangxin/android/social_main/app/libs/")
+
 val PACKAGES = mapOf(
     "android.support." to "rpkg.android.support.",
     "android.arch.lifecycle." to "rpkg.android.arch.lifecycle.",
@@ -22,7 +24,7 @@ class RefactorTest {
 
     @Test
     fun refactor() {
-        val from = "com.android.support:design:26.1.0"
+        val from = "wblsdk_sdk_p_lx20211129_04.aar"
         val location = GradleCache.findByImplementation(from)!!
         val tgt = OUTPUT.resolve("rpkg-${PackageName(from).replace('.', '_')}-${location.fileName}")
         Refactor().apply {

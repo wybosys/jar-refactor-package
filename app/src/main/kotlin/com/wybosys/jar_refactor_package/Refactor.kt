@@ -127,11 +127,23 @@ open class Refactor {
             }
         }
 
+        if (pkg == "wblsdk_sdk_p_lx20211129_04.aar") {
+            val fnd = doc.childNodes.queryByAttribute("meta-data", "android:resource", "@xml/toutiao_file_paths")
+                .firstOrNull()
+            fnd?.setAttribute("tools:replace", "android:resource")
+        }
+
         out.putNextEntry(ZipEntry(entry.name))
         out.write(doc.toByteArray())
     }
 
     fun processNormal(pkg: String, jar: JarFile, entry: JarEntry, out: JarOutputStream) {
+        if (pkg == "wblsdk_sdk_p_lx20211129_04.aar") {
+            if (entry.name.startsWith("data-binding")) {
+                return
+            }
+        }
+
         out.putNextEntry(ZipEntry(entry.name))
 
         val bytes = ReadBytes(jar, entry)

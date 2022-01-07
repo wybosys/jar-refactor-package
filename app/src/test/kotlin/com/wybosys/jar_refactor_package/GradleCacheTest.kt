@@ -6,6 +6,9 @@ class GradleCacheTest {
 
     @Test
     fun update() {
+        GradleCache.STANDALONES = listOf(
+            APPLIBS
+        )
         GradleCache.update()
     }
 

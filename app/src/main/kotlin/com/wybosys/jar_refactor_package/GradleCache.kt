@@ -20,11 +20,40 @@ object GradleCache {
         }, "${STORAGE}/jar-refactor-packages.cdb")
     }
 
+    /**
+     * 独立文件夹，用于扫描独立的库
+     */
+    var STANDALONES = listOf<Path>()
+
     fun update(directory: Path = STORAGE) {
         updateFiles(directory)
+        STANDALONES.forEach {
+            if (it.isDirectory()) {
+                scan(it)
+            }
+        }
     }
 
+    private val PAT_JAR = Regex(""".+\.[ja]ar$""")
     private val PAT_PACKAGE = Regex("""^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)*$""")
+
+    /**
+     * 扫描独立类库
+     */
+    fun scan(directory: Path) {
+        Files.list(directory).forEach { each ->
+            if (each.isDirectory()) {
+                scan(each)
+                return@forEach
+            }
+
+            if (!PAT_JAR.matches(each.name)) {
+                return@forEach
+            }
+
+            DB.put(each.name.toByteArray(), each.pathString.toByteArray())
+        }
+    }
 
     /**
      * 更新file的列表
@@ -72,13 +101,11 @@ object GradleCache {
         val impl = "$group:$artifact:$version"
 
         val tgts = setOf(
-            "$artifact-$version.aar",
-            "$artifact-$version.jar"
+            "$artifact-$version.aar", "$artifact-$version.jar"
         )
-        val fnds = Files.find(versionDirectory, Int.MAX_VALUE,
-            { path, attr ->
-                tgts.contains(path.name)
-            }).toList()
+        val fnds = Files.find(versionDirectory, Int.MAX_VALUE, { path, attr ->
+            tgts.contains(path.name)
+        }).toList()
 
         if (fnds.isEmpty()) {
             println("没有找到 $impl")
